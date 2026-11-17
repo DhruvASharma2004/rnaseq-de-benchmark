@@ -1,0 +1,147 @@
+"""RNA-seq differential-expression benchmark.
+
+Scatter-gather workflow:
+
+    simulate  ->  run_method  ->  evaluate  ->  aggregate  ->  figures/report
+
+Each scenario (samples per group x effect size x seed) is simulated once, then
+handed to every method, so methods are compared on identical data. Results are
+evaluated against the simulation's ground truth and gathered into one summary
+table.
+
+Run with::
+
+    snakemake --cores 4
+    snakemake --cores 2 --configfile config/ci.yaml
+    snakemake --dag | dot -Tpng > assets/dag.png
+"""
+
+import os
+import sys
+
+configfile: "config/config.yaml"
+
+# Make `src/` importable from the scripts this workflow invokes.
+REPO_ROOT = os.path.abspath(os.path.dirname(workflow.snakefile) + "/..")
+sys.path.insert(0, REPO_ROOT)
+
+RESULTS = config.get("results_dir", "results")
+
+N_PER_GROUP = config["scenarios"]["n_per_group"]
+LOG2FC = [f"{float(v):g}" for v in config["scenarios"]["log2fc"]]
+SEEDS = config["scenarios"]["seed"]
+METHODS = config["methods"]
+
+wildcard_constraints:
+    n="\\d+",
+    lfc="[0-9.]+",
+    seed="\\d+",
+    method="[A-Za-z0-9_]+",
+
+DATASET = f"{RESULTS}/datasets/n{{n}}_lfc{{lfc}}_seed{{seed}}"
+METHOD_OUT = f"{RESULTS}/de/n{{n}}_lfc{{lfc}}_seed{{seed}}__{{method}}"
+
+
+rule all:
+    input:
+        f"{RESULTS}/benchmark_summary.csv",
+        f"{RESULTS}/benchmark_report.md",
+        f"{RESULTS}/figures/fdr_control.png",
+        f"{RESULTS}/figures/power_by_sample_size.png",
+        f"{RESULTS}/figures/roc_pr_curves.png",
+        f"{RESULTS}/figures/effect_size_accuracy.png",
+
+
+rule simulate:
+    """Generate one dataset with known differential expression."""
+    output:
+        counts=f"{DATASET}/counts.csv.gz",
+        metadata=f"{DATASET}/metadata.csv",
+        truth=f"{DATASET}/truth.csv",
+    params:
+        sim=config["simulation"],
+    log:
+        f"{RESULTS}/logs/simulate/n{{n}}_lfc{{lfc}}_seed{{seed}}.log",
+    script:
+        "scripts/simulate.py"
+
+
+rule run_method:
+    """Run one differential-expression method on one dataset."""
+    input:
+        counts=f"{DATASET}/counts.csv.gz",
+        metadata=f"{DATASET}/metadata.csv",
+    output:
+        result=f"{METHOD_OUT}/result.csv.gz",
+    log:
+        f"{RESULTS}/logs/de/n{{n}}_lfc{{lfc}}_seed{{seed}}__{{method}}.log",
+    threads: 1
+    script:
+        "scripts/run_method.py"
+
+
+rule evaluate:
+    """Score one method's output against the ground truth."""
+    input:
+        result=f"{METHOD_OUT}/result.csv.gz",
+        truth=f"{DATASET}/truth.csv",
+    output:
+        metrics=f"{METHOD_OUT}/metrics.csv",
+        curves=f"{METHOD_OUT}/curves.csv.gz",
+    params:
+        alpha=config["alpha"],
+    log:
+        f"{RESULTS}/logs/evaluate/n{{n}}_lfc{{lfc}}_seed{{seed}}__{{method}}.log",
+    script:
+        "scripts/evaluate.py"
+
+
+def all_metrics(wildcards=None):
+    return expand(f"{METHOD_OUT}/metrics.csv", n=N_PER_GROUP, lfc=LOG2FC,
+                  seed=SEEDS, method=METHODS)
+
+
+rule aggregate:
+    """Gather every scenario x method into one summary table."""
+    input:
+        all_metrics,
+    output:
+        summary=f"{RESULTS}/benchmark_summary.csv",
+    log:
+        f"{RESULTS}/logs/aggregate.log",
+    script:
+        "scripts/aggregate.py"
+
+
+rule figures:
+    """Render the benchmark figures."""
+    input:
+        summary=f"{RESULTS}/benchmark_summary.csv",
+        curves=expand(f"{METHOD_OUT}/curves.csv.gz", n=N_PER_GROUP,
+                      lfc=LOG2FC, seed=SEEDS, method=METHODS),
+    output:
+        fdr=f"{RESULTS}/figures/fdr_control.png",
+        power=f"{RESULTS}/figures/power_by_sample_size.png",
+        curves_fig=f"{RESULTS}/figures/roc_pr_curves.png",
+        effect=f"{RESULTS}/figures/effect_size_accuracy.png",
+    params:
+        alpha=config["alpha"],
+    log:
+        f"{RESULTS}/logs/figures.log",
+    script:
+        "scripts/figures.py"
+
+
+rule report:
+    """Write the Markdown summary of what the benchmark found."""
+    input:
+        summary=f"{RESULTS}/benchmark_summary.csv",
+    output:
+        report=f"{RESULTS}/benchmark_report.md",
+    params:
+        alpha=config["alpha"],
+        config=config,
+    log:
+        f"{RESULTS}/logs/report.log",
+    script:
+        "scripts/report.py"

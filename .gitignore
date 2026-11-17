@@ -1,0 +1,30 @@
+# Snakemake
+.snakemake/
+
+# Benchmark outputs (regenerate with `snakemake --cores 4`)
+results/*
+!results/.gitkeep
+
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Environments
+.venv/
+venv/
+env/
+.conda/
+
+# Test / tooling caches
+.pytest_cache/
+.coverage
+.mypy_cache/
+.ruff_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints/

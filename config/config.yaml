@@ -1,0 +1,24 @@
+# Benchmark configuration.
+#
+# The scenario grid is the cross product of n_per_group x log2fc x seed.
+# Every combination is simulated once and handed to every method, so methods
+# are compared on identical data rather than on separate draws.
+
+simulation:
+  n_genes: 4000
+  frac_de: 0.10          # fraction of genes truly differentially expressed
+  lfc_spread: 0.25       # per-gene SD of the fold change around log2fc
+  library_size_sd: 0.25  # log-normal SD of per-sample sequencing depth
+  n_outlier_samples: 0   # samples given 4x inflated dispersion
+
+scenarios:
+  n_per_group: [3, 6, 12]
+  log2fc: [1.0, 2.0]
+  seed: [1, 2, 3]
+
+methods:
+  - deseq2
+  - ttest
+  - wilcoxon
+
+alpha: 0.05              # nominal FDR level every method is asked to control

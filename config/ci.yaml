@@ -1,0 +1,21 @@
+# Tiny configuration used by continuous integration: same code path, small
+# enough to finish in well under a minute on a free runner.
+
+simulation:
+  n_genes: 800
+  frac_de: 0.10
+  lfc_spread: 0.25
+  library_size_sd: 0.25
+  n_outlier_samples: 0
+
+scenarios:
+  n_per_group: [3, 6]
+  log2fc: [2.0]
+  seed: [1]
+
+methods:
+  - deseq2
+  - ttest
+  - wilcoxon
+
+alpha: 0.05
