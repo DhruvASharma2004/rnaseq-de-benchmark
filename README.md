@@ -3,7 +3,7 @@
 **A reproducible Snakemake workflow that asks whether a differential-expression method does what it claims.**
 
 [![CI](https://github.com/DhruvASharma2004/rnaseq-de-benchmark/actions/workflows/ci.yml/badge.svg)](https://github.com/DhruvASharma2004/rnaseq-de-benchmark/actions/workflows/ci.yml)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Snakemake](https://img.shields.io/badge/snakemake-%E2%89%A58.0-brightgreen.svg)](https://snakemake.readthedocs.io/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey.svg)](#license)
 
@@ -280,7 +280,7 @@ The suite is written against statistical behaviour, not just execution:
   signal; the Wilcoxon p-value floor at n=3 is asserted directly.
 - **Workflow** — the Snakemake DAG is required to parse and resolve.
 
-GitHub Actions runs the tests on Python 3.10, 3.11 and 3.12, then executes the
+GitHub Actions runs the tests on Python 3.11, 3.12 and 3.13, then executes the
 **whole workflow** on `config/ci.yaml` and asserts the summary table is the
 expected shape and that no method ranks worse than chance. Benchmark outputs
 are uploaded as build artifacts.
